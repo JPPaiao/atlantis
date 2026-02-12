@@ -22,10 +22,36 @@
   <script>
     console.log('teste')
 
-    document.getElementById('button').addEventListener('click', function () {
-      const valor = document.getElementById('url').value;
-      alert('Valor digitado: ' + valor);
-    });
+    // document.getElementById('button').addEventListener('click', function () {
+    //   const valor = document.getElementById('url').value;
+    //   alert('Valor digitado: ' + valor);
+    // });
+
+     // 1. Pega o parâmetro ?input= da URL
+    const params = new URLSearchParams(window.location.search);
+    const encodedUrl = params.get('input');
+
+    if (encodedUrl) {
+    // 2. Decodifica a URL
+      const decodedUrl = decodeURIComponent(encodedUrl);
+
+      console.log('URL recebida:', decodedUrl);
+
+      // 3. Extrai os 3 códigos depois de /ThirdParty/
+      const match = decodedUrl.match(/ThirdParty\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
+
+      if (match) {
+        const codigo1 = match[1];
+        const codigo2 = match[2];
+        const codigo3 = match[3];
+
+        console.log('Código 1:', codigo1);
+        console.log('Código 2:', codigo2);
+        console.log('Código 3:', codigo3);
+
+      }
+    }
+
   </script>
     <!-- <iframe src="https://jppaiao.github.io/atlantis/" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation allow-top-navigation-by-user-activation"
  frameborder="0" hidden></iframe> -->
