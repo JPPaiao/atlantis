@@ -19,8 +19,72 @@
     <button type="submit" id="button">Ir</button>
   </form>
 
+  <div id="qrcode"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     console.log('teste')
+
+    function crc16(payload) {
+      let crc = 0xFFFF;
+      for (let i = 0; i < payload.length; i++) {
+        crc ^= payload.charCodeAt(i) << 8;
+        for (let j = 0; j < 8; j++) {
+          if ((crc & 0x8000) !== 0) {
+            crc = (crc << 1) ^ 0x1021;
+          } else {
+            crc <<= 1;
+          }
+          crc &= 0xFFFF;
+        }
+      }
+      return crc.toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    function gerarPayloadPix({ chavePix, valor, descricao, cidade = 'SAO PAULO', nome = 'LOGX LOGISTICA' }) {
+      const valorFormatado = Number(valor).toFixed(2);
+
+      const payloadSemCRC =
+        '000201' +
+        '010212' +
+        '26' +
+          String(14 + chavePix.length).padStart(2, '0') +
+          '0014BR.GOV.BCB.PIX' +
+          '01' + String(chavePix.length).padStart(2, '0') + chavePix +
+        '52040000' +
+        '5303986' +
+        '54' + String(valorFormatado.length).padStart(2, '0') + valorFormatado +
+        '5802BR' +
+        '59' + String(nome.length).padStart(2, '0') + nome +
+        '60' + String(cidade.length).padStart(2, '0') + cidade +
+        '62' +
+          String(4 + descricao.length).padStart(2, '0') +
+          '05' + String(descricao.length).padStart(2, '0') + descricao +
+        '6304';
+
+      const crc = crc16(payloadSemCRC);
+      return payloadSemCRC + crc;
+    }
+
+    function gerarQrPix(valor, container) {
+      const payload = gerarPayloadPix({
+        chavePix: 'sua-chave-pix@exemplo.com', // 👈 coloque sua chave PIX aqui
+        valor: valor,
+        descricao: `Container ${container}`,
+        nome: 'LOGX LOGISTICA',
+        cidade: 'SAO PAULO'
+      });
+
+      document.getElementById('qrcode').innerHTML = '';
+
+      new QRCode(document.getElementById('qrcode'), {
+        text: payload,
+        width: 256,
+        height: 256
+      });
+
+      console.log('Payload PIX:', payload);
+    }
 
     async function api_url(cod1, cod2, cod3) {
       const cods = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod3}&d=${cod2}&k=${cod1}`, {
@@ -33,18 +97,20 @@
         }
       })
       .then((res) => res.json())
+      resultsJson = JSON.parse(cods.results)
+
+      const valor = resultsJson.Items[0].Price;
+      const container = resultsJson.Cntr;
 
       console.log(JSON.parse(cods.results))
 
-      return JSON.parse(cods.results)
+      gerarQrPix(valor, container);
     }
 
     document.getElementById('form').addEventListener('submit', function (e) {
       e.preventDefault(); // impede o redirect
 
       const valor = document.getElementById('url').value;
-      console.log('Valor digitado:', valor);
-
       const match = valor.match(/ThirdParty\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
 
       if (match) {
