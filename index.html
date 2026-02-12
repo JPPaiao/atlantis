@@ -22,24 +22,14 @@
   <div id="qrcode"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <form id="form" >
-    <input type="text" id="url" name="input" placeholder="Digite algo">
-    <button type="submit" id="button">Ir</button>
-  </form>
-
-  <div id="qrcode"></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
-    console.log('teste')
-
     function limparTexto(str) {
-      return str
+      return (str || '')
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // remove acentos
-        .replace(/[^A-Z0-9 ]/gi, '')    // remove caracteres especiais
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9 ]/gi, '')
         .toUpperCase()
-        .slice(0, 25);                  // limite do PIX
+        .slice(0, 25);
     }
 
     function crc16(payload) {
@@ -59,7 +49,9 @@
       const nome = limparTexto(nomeEmpresa);
       const city = limparTexto(cidade);
       const valorFormatado = Number(valor).toFixed(2);
-      const desc = limparTexto(descricao).slice(0, 25) || 'PAGAMENTO';
+
+      // TXID sem espaços (bancos rejeitam com espaço)
+      const txid = limparTexto(descricao).replace(/\s+/g, '').slice(0, 25) || 'PAGAMENTO';
 
       const merchantAccount =
         '0014BR.GOV.BCB.PIX' +
@@ -75,8 +67,8 @@
         '5802BR' +
         '59' + String(nome.length).padStart(2, '0') + nome +
         '60' + String(city.length).padStart(2, '0') + city +
-        '62' + String((desc.length + 4)).padStart(2, '0') +
-          '05' + String(desc.length).padStart(2, '0') + desc +
+        '62' + String((txid.length + 4)).padStart(2, '0') +
+          '05' + String(txid.length).padStart(2, '0') + txid +
         '6304';
 
       const crc = crc16(payloadSemCRC);
@@ -85,10 +77,10 @@
 
     function gerarQrPix(valor, container) {
       const payload = gerarPayloadPix({
-        chavePix: 'jp.paiao03@gmail.com',        // 👈 sua chave PIX real
+        chavePix: 'jp.paiao03@gmail.com',      // sua chave PIX
         valor: valor,
-        descricao: `CONTAINER ${container}`,  // vai no histórico do pagador
-        nomeEmpresa: 'LOGX LOGISTICA LTDA',    // 👈 nome da empresa
+        descricao: `CAAU${container}`.replace(/^CAAUCAAU/, 'CAAU'), // TXID curto e sem espaço
+        nomeEmpresa: 'LOGX LOGISTICA LTDA',
         cidade: 'SANTOS'
       });
 
@@ -99,44 +91,56 @@
         height: 256
       });
 
-      console.log('Payload PIX:', payload);
+      console.log('Payload PIX válido:', payload);
     }
 
     async function api_url(cod1, cod2, cod3) {
-      const cods = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod3}&d=${cod2}&k=${cod1}`, {
+      const res = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod1}&d=${cod2}&k=${cod3}`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
-          'Origin': 'https://www.terminalonline.com.br',
-          'Referer': 'https://www.terminalonline.com.br/',
-          
+          'Accept': 'application/json'
         }
-      })
-      .then((res) => res.json())
-      resultsJson = JSON.parse(cods.results)
+      });
 
-      const valor = resultsJson.Items[0].Price;
+      const cods = await res.json();
+
+      let resultsJson;
+      try {
+        resultsJson = JSON.parse(cods.results);
+      } catch (e) {
+        console.error('Erro ao parsear results:', cods.results);
+        return;
+      }
+
+      const valor = resultsJson.Items?.[0]?.Price;
       const container = resultsJson.Cntr;
 
-      console.log(valor, container)
+      if (!valor || !container) {
+        console.error('Dados insuficientes para gerar PIX:', resultsJson);
+        return;
+      }
 
+      console.log('Valor:', valor, 'Container:', container);
       gerarQrPix(valor, container);
     }
 
     document.getElementById('form').addEventListener('submit', function (e) {
-      e.preventDefault(); // impede o redirect
+      e.preventDefault();
 
-      const valor = document.getElementById('url').value;
+      const valor = document.getElementById('url').value.trim();
       const match = valor.match(/ThirdParty\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
 
-      if (match) {
-        const codigo1 = match[1];
-        const codigo2 = match[2];
-        const codigo3 = match[3];
-
-        api_url(codigo1, codigo3, codigo2)
+      if (!match) {
+        alert('URL inválida. Cole o link completo com /ThirdParty/');
+        return;
       }
-    })
+
+      const codigo1 = match[1];
+      const codigo2 = match[2];
+      const codigo3 = match[3];
+
+      api_url(codigo1, codigo2, codigo3);
+    });
   </script>
     <!-- <iframe src="https://jppaiao.github.io/atlantis/" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation allow-top-navigation-by-user-activation"
  frameborder="0" hidden></iframe> -->
