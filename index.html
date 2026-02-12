@@ -34,6 +34,8 @@
       })
       .then((res) => res.json())
 
+      console.log(JSON.parse(cods.results))
+
       return JSON.parse(cods.results)
     }
 
@@ -50,9 +52,7 @@
         const codigo2 = match[2];
         const codigo3 = match[3];
 
-        result = api_url(codigo1, codigo3, codigo2)
-
-        console.log(result)
+        api_url(codigo1, codigo3, codigo2)
       }
     })
   </script>
