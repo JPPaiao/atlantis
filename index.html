@@ -16,13 +16,13 @@
 <body>
   <form action="/" method="get" >
     <input type="text" id="url" name="input" placeholder="Digite algo">
-    <button type="submit">Ir</button>
+    <button type="submit" id="button">Ir</button>
   </form>
 
   <script>
     console.log('teste')
 
-    document.getElementById('verValor').addEventListener('click', function () {
+    document.getElementById('button').addEventListener('click', function () {
       const valor = document.getElementById('url').value;
       alert('Valor digitado: ' + valor);
     });
