@@ -23,7 +23,7 @@
     console.log('teste')
 
     async function api_url(cod1, cod2, cod3) {
-      const cods = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod1}&d=${cod3}&k=${cod2}`, {
+      const cods = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod3}&d=${cod2}&k=${cod1}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
