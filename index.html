@@ -34,7 +34,7 @@
       })
       .then((res) => res.json())
 
-      console.log(cods)
+      return JSON.parse(cods.results)
     }
 
     document.getElementById('form').addEventListener('submit', function (e) {
@@ -50,7 +50,9 @@
         const codigo2 = match[2];
         const codigo3 = match[3];
 
-        api_url(codigo1, codigo3, codigo2)
+        result = api_url(codigo1, codigo3, codigo2)
+
+        console.log(result)
       }
     })
   </script>
