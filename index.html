@@ -25,41 +25,50 @@
   <script>
     console.log('teste')
 
+    function limparTexto(str) {
+      return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .replace(/[^A-Z0-9 ]/gi, '')    // remove caracteres especiais
+        .toUpperCase()
+        .slice(0, 25);                  // limite do PIX
+    }
+
     function crc16(payload) {
       let crc = 0xFFFF;
       for (let i = 0; i < payload.length; i++) {
         crc ^= payload.charCodeAt(i) << 8;
         for (let j = 0; j < 8; j++) {
-          if ((crc & 0x8000) !== 0) {
-            crc = (crc << 1) ^ 0x1021;
-          } else {
-            crc <<= 1;
-          }
+          if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
+          else crc <<= 1;
           crc &= 0xFFFF;
         }
       }
       return crc.toString(16).toUpperCase().padStart(4, '0');
     }
 
-    function gerarPayloadPix({ chavePix, valor, descricao, cidade = 'SAO PAULO', nome = 'LOGX LOGISTICA' }) {
+    function gerarPayloadPix({ chavePix, valor, descricao, nomeEmpresa, cidade = 'SAO PAULO' }) {
+      const nome = limparTexto(nomeEmpresa);
+      const city = limparTexto(cidade);
       const valorFormatado = Number(valor).toFixed(2);
+      const desc = limparTexto(descricao).slice(0, 25) || 'PAGAMENTO';
+
+      const merchantAccount =
+        '0014BR.GOV.BCB.PIX' +
+        '01' + String(chavePix.length).padStart(2, '0') + chavePix;
 
       const payloadSemCRC =
         '000201' +
         '010212' +
-        '26' +
-          String(14 + chavePix.length).padStart(2, '0') +
-          '0014BR.GOV.BCB.PIX' +
-          '01' + String(chavePix.length).padStart(2, '0') + chavePix +
+        '26' + String(merchantAccount.length).padStart(2, '0') + merchantAccount +
         '52040000' +
         '5303986' +
         '54' + String(valorFormatado.length).padStart(2, '0') + valorFormatado +
         '5802BR' +
         '59' + String(nome.length).padStart(2, '0') + nome +
-        '60' + String(cidade.length).padStart(2, '0') + cidade +
-        '62' +
-          String(4 + descricao.length).padStart(2, '0') +
-          '05' + String(descricao.length).padStart(2, '0') + descricao +
+        '60' + String(city.length).padStart(2, '0') + city +
+        '62' + String((desc.length + 4)).padStart(2, '0') +
+          '05' + String(desc.length).padStart(2, '0') + desc +
         '6304';
 
       const crc = crc16(payloadSemCRC);
@@ -68,15 +77,14 @@
 
     function gerarQrPix(valor, container) {
       const payload = gerarPayloadPix({
-        chavePix: 'jp.paiao03@gmail.com', // 👈 coloque sua chave PIX aqui
+        chavePix: 'jp.paiao03@gmail.com',        // 👈 sua chave PIX real
         valor: valor,
-        descricao: `Container ${container}`,
-        nome: 'LOGX LOGISTICA',
-        cidade: 'SAO PAULO'
+        descricao: `CONTAINER ${container}`,  // vai no histórico do pagador
+        nomeEmpresa: 'LOGX LOGISTICA LTDA',    // 👈 nome da empresa
+        cidade: 'SANTOS'
       });
 
       document.getElementById('qrcode').innerHTML = '';
-
       new QRCode(document.getElementById('qrcode'), {
         text: payload,
         width: 256,
@@ -102,7 +110,7 @@
       const valor = resultsJson.Items[0].Price;
       const container = resultsJson.Cntr;
 
-      console.log(JSON.parse(cods.results))
+      console.log(valor, container)
 
       gerarQrPix(valor, container);
     }
