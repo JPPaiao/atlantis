@@ -14,13 +14,20 @@
   </style>
 </head>
 <body>
-  <form action="/" method="get" >
+  <form id="form" >
     <input type="text" id="url" name="input" placeholder="Digite algo">
     <button type="submit" id="button">Ir</button>
   </form>
 
   <script>
     console.log('teste')
+
+    document.getElementById('meuForm').addEventListener('submit', function (e) {
+      e.preventDefault(); // impede o redirect
+
+      const valor = document.getElementById('url').value;
+      console.log('Valor digitado:', valor);
+    });
 
     // document.getElementById('button').addEventListener('click', function () {
     //   const valor = document.getElementById('url').value;
