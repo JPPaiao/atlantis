@@ -1,28 +1,157 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>PIX - QR Code</title>
 
   <style>
     * {
       border: 0;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      padding: 16px;
+      color: #0e1a3a;
+    }
+
+    form {
+      display: flex;
+      gap: 8px;
+      flex-direction: column;
+      max-width: 420px;
+      padding: 8px;
+      background: #f9fbff;
+      border: 1px solid #dfe6ff;
+      border-radius: 12px;
+    }
+
+    form > input {
+      border-radius: 8px;
+      border: 1px solid #0a2392;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    form > input:focus {
+      box-shadow: 0 0 0 3px rgba(33, 63, 196, .15);
+      border-color: #213fc4;
+    }
+
+    small.hint {
+      color: #0a2392;
+      opacity: 0.8;
+      margin-top: -6px;
+      margin-bottom: 6px;
+    }
+
+    button {
+      padding: 10px 12px;
+      background-color: #213fc4;
+      border-radius: 8px;
+      border: 1px solid #0a2392;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background-color: #a7b1f1;
+      border-color: #7e8ce0;
+      color: #f1f3ff;
+      cursor: not-allowed;
+      filter: none;
+      transform: none;
+      opacity: 0.9;
+    }
+
+    #qrcode {
+      margin: 16px 8px 8px 8px;
+      width: 160px;
+      height: 160px;
+    }
+
+    #pix-payload-area {
+      margin: 8px 8px 0 8px;
+      max-width: 420px;
+      display: none; /* aparece quando gerar o QR */
+    }
+
+    #pix-payload-area label {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: #0a2392;
+      font-weight: 600;
+    }
+
+    #pix-payload {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #0a2392;
+      border-radius: 8px;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 84px;
+      background: #fff;
+      color: #0e1a3a;
+    }
+
+    #copiar-btn {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background-color: #213fc4;
+      border: 1px solid #0a2392;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #copiar-btn.copiado {
+      background-color: #2aa745;
+      border-color: #1d7f33;
     }
   </style>
 </head>
 <body>
-  <form id="form" >
-    <input type="text" id="url" name="input" placeholder="Digite algo">
-    <button type="submit" id="button">Ir</button>
+  <form id="form" novalidate>
+    <span>Copie o link do site e insira no campo abaixo</span>
+
+    <input type="text" id="url" name="input" placeholder="Link do site" autocomplete="off" />
+    <small class="hint">Ex.: https://www.terminalonline.com.br/ThirdParty/...</small>
+
+    <input type="email" id="email" name="email" placeholder="Email de cobrança" autocomplete="email" />
+    <input type="text" id="cnpj" name="cnpj" placeholder="CNPJ" autocomplete="off" />
+
+    <!-- BOTÃO INICIA DESABILITADO -->
+    <button type="submit" id="button" disabled>Gerar</button>
   </form>
 
-  <div id="qrcode"></div>
+  <div id="qrcode" aria-label="QR Code PIX"></div>
 
+  <!-- Área de copia-e-cola do payload do PIX -->
+  <div id="pix-payload-area">
+    <label for="pix-payload">Código PIX (copia e cola):</label>
+    <textarea id="pix-payload" rows="4" readonly></textarea>
+    <button id="copiar-btn" type="button">Copiar código</button>
+  </div>
+
+  <!-- Lib de QRCode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <script>
+    // ========= Utilidades =========
     function limparTexto(str) {
       return (str || '')
         .normalize('NFD')
@@ -50,7 +179,7 @@
       const city = limparTexto(cidade);
       const valorFormatado = Number(valor).toFixed(2);
 
-      // TXID sem espaços (bancos rejeitam com espaço)
+      // TXID sem espaços
       const txid = limparTexto(descricao).replace(/\s+/g, '').slice(0, 25) || 'PAGAMENTO';
 
       const merchantAccount =
@@ -76,30 +205,70 @@
     }
 
     function gerarQrPix(valor, container) {
+      // Escolha o valor a usar: real da API ou fixo
+      const valorUsado = 1; // <- Mantenha 1 para teste
+      // const valorUsado = valor; // <- Use o valor retornado pela API
+
       const payload = gerarPayloadPix({
-        chavePix: 'jp.paiao03@gmail.com',      // sua chave PIX
-        valor: valor,
-        descricao: `CAAU${container}`.replace(/^CAAUCAAU/, 'CAAU'), // TXID curto e sem espaço
+        chavePix: 'jp.paiao03@gmail.com',
+        valor: valorUsado,
+        descricao: `CAAU${container}`.replace(/^CAAUCAAU/, 'CAAU'),
         nomeEmpresa: 'LOGX LOGISTICA LTDA',
         cidade: 'SANTOS'
       });
 
-      document.getElementById('qrcode').innerHTML = '';
-      new QRCode(document.getElementById('qrcode'), {
+      // Gera o QR Code
+      const qrDiv = document.getElementById('qrcode');
+      qrDiv.innerHTML = '';
+      new QRCode(qrDiv, {
         text: payload,
-        width: 256,
-        height: 256
+        width: 160,
+        height: 160
       });
+
+      // Mostra e preenche a área "PIX copia e cola"
+      const payloadArea = document.getElementById('pix-payload-area');
+      const textarea = document.getElementById('pix-payload');
+      textarea.value = payload;
+      payloadArea.style.display = 'block';
 
       console.log('Payload PIX válido:', payload);
     }
 
+    // ========= Validação e controle de botão =========
+    const form = document.getElementById('form');
+    const urlInput = document.getElementById('url');
+    const emailInput = document.getElementById('email');
+    const cnpjInput = document.getElementById('cnpj');
+    const submitBtn = document.getElementById('button');
+
+    function validaURLComThirdParty(str) {
+      if (!str) return false;
+      // precisa conter .../ThirdParty/{cod1}/{cod2}/{cod3}
+      const m = str.match(/ThirdParty\/([^/]+)\/([^/]+)\/([^/]+)/);
+      return !!m;
+    }
+
+    function validarFormulario() {
+      const urlOk = validaURLComThirdParty(urlInput.value.trim());
+      const emailOk = !!emailInput.value.trim(); // input type="email" já ajuda no formato
+      const cnpjOk = !!cnpjInput.value.trim();
+      const valido = urlOk && emailOk && cnpjOk;
+
+      submitBtn.disabled = !valido;
+      return valido;
+    }
+
+    [urlInput, emailInput, cnpjInput].forEach(el => {
+      el.addEventListener('input', validarFormulario);
+      el.addEventListener('blur', validarFormulario);
+    });
+
+    // ========= Chamada de API =========
     async function api_url(cod1, cod2, cod3) {
       const res = await fetch(`https://purcell.terminalonline.com.br/Importer?c=${cod2}&d=${cod3}&k=${cod1}`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
+        headers: { 'Accept': 'application/json' }
       });
 
       const cods = await res.json();
@@ -109,7 +278,7 @@
         resultsJson = JSON.parse(cods.results);
       } catch (e) {
         console.error('Erro ao parsear results:', cods.results);
-        return;
+        throw new Error('Não foi possível interpretar a resposta da API.');
       }
 
       const valor = resultsJson.Items?.[0]?.Price;
@@ -117,32 +286,81 @@
 
       if (!valor || !container) {
         console.error('Dados insuficientes para gerar PIX:', resultsJson);
-        return;
+        throw new Error('API não retornou valor/container.');
       }
 
       console.log('Valor:', valor, 'Container:', container);
       gerarQrPix(valor, container);
     }
 
-    document.getElementById('form').addEventListener('submit', function (e) {
+    // ========= Submit =========
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      const valor = document.getElementById('url').value.trim();
-      const match = valor.match(/ThirdParty\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
-
-      if (!match) {
-        alert('URL inválida. Cole o link completo com /ThirdParty/');
+      if (!validarFormulario()) {
+        alert('Preencha todos os campos corretamente para gerar o QR Code.');
         return;
       }
 
-      const codigo1 = match[1];
-      const codigo2 = match[2];
-      const codigo3 = match[3];
+      // Desabilita o botão durante a requisição
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Gerando...';
 
-      api_url(codigo1, codigo2, codigo3);
+      try {
+        const valorURL = urlInput.value.trim();
+        const match = valorURL.match(/ThirdParty\/([^/]+)\/([^/]+)\/([^/]+)/);
+
+        if (!match) {
+          alert('A URL precisa conter o padrão ThirdParty/{cod1}/{cod2}/{cod3}.');
+          return;
+        }
+
+        const codigo1 = match[1];
+        const codigo2 = match[2];
+        const codigo3 = match[3];
+
+        await api_url(codigo1, codigo2, codigo3);
+
+        // Limpa o formulário ao concluir com sucesso
+        form.reset();
+        validarFormulario(); // mantém o botão desabilitado até novo preenchimento
+        urlInput.focus();
+
+      } catch (err) {
+        console.error(err);
+        alert('Ocorreu um erro ao gerar o QR Code. Tente novamente.');
+      } finally {
+        // Restaura o texto do botão; habilitação é controlada pela validação
+        submitBtn.textContent = 'Gerar';
+      }
     });
+
+    // ========= Copiar código =========
+    const copiarBtn = document.getElementById('copiar-btn');
+    copiarBtn.addEventListener('click', async () => {
+      const textarea = document.getElementById('pix-payload');
+
+      // Seleciona e copia
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+
+      try {
+        await navigator.clipboard.writeText(textarea.value);
+        copiarBtn.classList.add('copiado');
+        copiarBtn.textContent = 'Copiado!';
+        setTimeout(() => {
+          copiarBtn.classList.remove('copiado');
+          copiarBtn.textContent = 'Copiar código';
+        }, 1600);
+      } catch {
+        // Fallback simples
+        document.execCommand('copy');
+        alert('Código PIX copiado!');
+      }
+    });
+
+    // Estado inicial do botão
+    validarFormulario();
   </script>
-    <!-- <iframe src="https://jppaiao.github.io/atlantis/" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation allow-top-navigation-by-user-activation"
- frameborder="0" hidden></iframe> -->
 </body>
 </html>
