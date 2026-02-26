@@ -27,6 +27,11 @@
       border-radius: 12px;
     }
 
+    form > span {
+      font-size: 16px;
+      background-color: #f8fc26;
+    }
+
     form > input {
       border-radius: 8px;
       border: 1px solid #0a2392;
@@ -129,12 +134,12 @@
 </head>
 <body>
   <form id="form" novalidate>
-    <span>Copie o link do site e insira no campo abaixo</span>
+    <span>Para gerar o pix copie o link desse site e insira no campo abaixo junto com o e-mail e CNPJ</span>
 
     <input type="text" id="url" name="input" placeholder="Link do site" autocomplete="off" />
     <small class="hint">Ex.: https://www.terminalonline.com.br/ThirdParty/...</small>
 
-    <input type="email" id="email" name="email" placeholder="Email de cobrança" autocomplete="email" />
+    <input type="email" id="email" name="email" placeholder="Email" autocomplete="email" />
     <input type="text" id="cnpj" name="cnpj" placeholder="CNPJ" autocomplete="off" />
 
     <!-- BOTÃO INICIA DESABILITADO -->
