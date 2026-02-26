@@ -119,6 +119,10 @@
       background-color: #2aa745;
       border-color: #1d7f33;
     }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -322,6 +326,7 @@
         form.reset();
         validarFormulario(); // mantém o botão desabilitado até novo preenchimento
         urlInput.focus();
+        form.classList.add("hidden");
 
       } catch (err) {
         console.error(err);
